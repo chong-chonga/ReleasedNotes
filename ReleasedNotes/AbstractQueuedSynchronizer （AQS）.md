@@ -2,7 +2,7 @@
 
 ## 类继承结构
 
-![image-20220327004345331](C:\Users\悠一木碧\AppData\Roaming\Typora\typora-user-images\image-20220327004345331.png)
+![image-20220327004345331](./images/image-20220327004345331.png)
 
 其父类 `AbstractOwnableSynchronizer` 如下
 

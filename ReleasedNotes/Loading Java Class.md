@@ -48,16 +48,13 @@ JVM 使用下列三种方式之一来创建类。
 1. 如果该类是非数组类型，则下列两种方法之一会用于加载并创建该类。
    - 如果 D 是由启动类加载器定义的，则使用启动类加载器加载 C。
    - 如果 D 是由用户自定的类加载器定义的，则使用用户自定的类加载器加载 C。
-2. 否则，该类是数组类型。数组类型是由 JVM 直接创建的而不是类加载器。然而，D 的类加载器会在创建数组类型 C 的时候用到。
+2. 否则由 JVM 直接创建，而不是类加载器。然而，D 的类加载器会在创建数组类型 C 的时候用到。
 
 上面这些方式，可以看出：由 D 触发了 C 的创建，那么就使用 D 的类加载器去创建 C。
 
 ### 具体加载步骤
 
 尝试解析具体的 class 文件，这其中就包括了对 class 文件的结构验证、解析对父类的符号引用...。
-
-### 参照
-
 [JVM13规范-Creation And Loading](https://docs.oracle.com/javase/specs/jvms/se13/html/jvms-5.html#jvms-5.3)
 
 
@@ -76,7 +73,7 @@ JVM 可以选择“惰性”链接策略，在这种策略中，类或接口中�
 
 ### Preparation-准备
 
-创建类/接口的**静态字段**`static fields` 初始化这些字段为默认值。这不需要执行 Java 代码来实现。
+创建类/接口的**静态字段**并设为默认值。这不需要执行 Java 代码。
 
 ### Resolution-解析
 
@@ -167,17 +164,17 @@ public class MainProcedure {
 }
 ```
 
-1. `MainProcedure.java` 仍然是一个文本文件，在被 `javap` 命令编译后变为 `MainProcedure.class` 字节码文件。
+1. `MainProcedure.java` 仍然是一个文本文件，在被 `javac` 命令编译后变为 `MainProcedure.class` 字节码文件。
 
-2. JVM 启动一个进程，并从 `classpath` 下找到 `MainProcedure` 二进制文件，使用类加载器创建并加载 `MainProcedure`，随后链接、初始化。在链接的第二个过程-**Preparation** 中，MainProcedure 的静态 field num 初始化为零值 [Java SE13-JVM-Primitive Types and Values](https://docs.oracle.com/javase/specs/jvms/se13/html/jvms-2.html#jvms-2.3)。在初始化时，会执行所有的赋值操作，这个时候，`private static int num = 1`被执行。num 的最终值是 1。
-
-   ```tex
-   int, whose values are 32-bit signed two's-complement integers, and whose default value is zero
-   ```
+2. JVM 启动一个进程，并从 `classpath` 下找到 `MainProcedure` 二进制文件，使用类加载器创建并加载 `MainProcedure`，随后链接、初始化。
+在**Linking**的第二个过程-**Preparation** 中，MainProcedure 的静态 field num 初始化为零值 [Java SE13-JVM-Primitive Types and Values]
+   (https://docs.oracle.com/javase/specs/jvms/se13/html/jvms-2.html#jvms-2.3)。
+接着在**Initialization**时，会执行所有的赋值操作，这个时候，`private static int num = 1`被执行。num 的最终值是 1。
 
 3. JVM 调用 `MainProcedure` 的 main 方法。
 
-4. main 方法执行到 `DemoObject demoObject = new DemoObject("hello");`。由于 `DemoObject`还未被加载，因此触发会对 `DemoObject`进行加载。加载完成后，先在堆空间划分一块内存区域，用于存放 `DemoObject`，这块内存区域的大小在加载的时候就被确定了。
+4. main 方法执行到 `DemoObject demoObject = new DemoObject("hello");`。由于 `DemoObject`还未被加载，因此触发会对 `DemoObject`进行加载。加载完成后， 
+   `DemoObject`，这块的大小就被确定了。然后在堆中划分一块内存区域存放该对象。
 
 5. 对该实例的字段（field）初始化为零值，并设置对象头，最后执行构造方法。这个实例有指向方法区中 `DemoObject` 类元信息的指针（对象头中）。
 
@@ -186,13 +183,6 @@ public class MainProcedure {
 7. main 方法指向到 `demoObject.method1();` 。JVM 根据 demoObject 引用找到实例，并通过实例的对象头上指向 `DemoObject` 类元信息的指针找到对应的方法表，获得 method1() 的字节码地址。
 
 8. 执行 method1()。
-
-光有以上的说明不够，那就看看实操：
-
-![image-20220413213156855](C:\Users\悠一木碧\AppData\Roaming\Typora\typora-user-images\image-20220413213156855.png)
-
-详情可以见 [Java SE13-JVM-Methods](https://docs.oracle.com/javase/specs/jvms/se13/html/jvms-4.html#jvms-4.6)
-
 
 
 ## 双亲委派机制
@@ -289,114 +279,3 @@ public abstract class ClassLoader {
 根据上面的描述，我们可以知道：
 
 如果我们自定义类加载器，则必须从 `ClassLoader`中派生；委派机制在 `loadClass` 方法中，因此不要轻易覆盖该方法。
-
-### 总结
-
-双亲指的是 AppClassLoader 上层的两个类加载器：`ExtensionClassLoader`、`BoostrapClassLoader`。这两个类加载器加载优先级高于 `AppClassLoader`。
-
-### 旁注
-
-自 JDK 1.1以来，Oracle的 JVM 调用类加载器的 loadClass 方法，以使其加载类或接口。loadClass 的参数是要加载的类或接口的名称。loadClass 方法还有一个双参数版本，其中第二个参数是一个布尔值，指示是否链接类或接口。JDK 1.0.2中只提供了两个参数的版本，Oracle的 JVM 依赖于它来链接加载的类或接口。**从JDK 1.1开始，Oracle的 JVM 直接链接类或接口，而不依赖于类加载器**。
-
-[JavaSE13-JVM 规范](https://docs.oracle.com/javase/specs/jvms/se13/html/jvms-5.html#jvms-5.3.2)
-
-在 JDK13 中，类加载器结构已经不像上面那样了。查看 ClassLoader 的源码即可发现：
-
-```java
-    static {
-        String append = VM.getSavedProperty("jdk.boot.class.path.append");
-        // BOOT_LOADER 默认为 null
-        BOOT_LOADER =
-            new BootClassLoader((append != null && !append.isEmpty())
-                ? new URLClassPath(append, true)
-                : null);
-        PLATFORM_LOADER = new PlatformClassLoader(BOOT_LOADER);
-
-        String cp = System.getProperty("java.class.path");
-        if (cp == null || cp.isEmpty()) {
-            String initialModuleName = System.getProperty("jdk.module.main");
-            cp = (initialModuleName == null) ? "" : null;
-        }
-        URLClassPath ucp = new URLClassPath(cp, false);
-        APP_LOADER = new AppClassLoader(PLATFORM_LOADER, ucp);
-    }
-```
-
-**AppClassLoader**
-
-```java
-    private static class AppClassLoader extends BuiltinClassLoader {
-        static {
-            if (!ClassLoader.registerAsParallelCapable())
-                throw new InternalError();
-        }
-
-        final URLClassPath ucp;
-
-        AppClassLoader(PlatformClassLoader parent, URLClassPath ucp) {
-            super("app", parent, ucp);
-            this.ucp = ucp;
-        }
-		...
-        ...
-    }
-
-```
-
-**PlatformClassLoader**
-
-```java
-    private static class PlatformClassLoader extends BuiltinClassLoader {
-        static {
-            if (!ClassLoader.registerAsParallelCapable())
-                throw new InternalError();
-        }
-
-        PlatformClassLoader(BootClassLoader parent) {
-            super("platform", parent, null);
-        }
-		...
-        ...
-    }
-
-```
-
-**BootLoader**
-
-```java
-	/*
-     * 用于在为引导类加载器定义的模块中查找资源的类加载器。不用于类加载。
-     */
-	private static class BootClassLoader extends BuiltinClassLoader {
-        ...
-        ...
-    };
-
-```
-
-### ClassLoaderDemo
-
-```java
-public class ClassLoaderDemo {
-    	public static void main(String[] args) throws ClassNotFoundException {
-		ClassLoader systemClassLoader = ClassLoader.getSystemClassLoader();
-		System.out.println("systemClassLoader.getClass() = " + systemClassLoader.getClass());
-		ClassLoader platformClassLoader = systemClassLoader.getParent();
-		System.out.println("platformClassLoader.getClass() = " + platformClassLoader.getClass());
-	}
-
-}
-```
-
-**运行结果**
-
-![image-20220413210909897](C:\Users\悠一木碧\AppData\Roaming\Typora\typora-user-images\image-20220413210909897.png)
-
-## C++-namespace
-
-C++ 中有一个概念是 namespace，即命名空间。通过使用不同的名称空间来区分相同名称的类。
-
-ClassLoader 和 Class 的名称共同决定了一个 '类'。因此，我们也可以把 ClassLoader 看成类/接口的名称空间。
-
-
-
